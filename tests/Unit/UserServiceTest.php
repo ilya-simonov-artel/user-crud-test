@@ -70,10 +70,9 @@ class UserServiceTest extends TestCase
         $service->updateUser($actor, $target, [
             'name' => 'Updated Name',
             'password' => '',
-        ], null, false, true);
+        ], null, true);
 
         $this->assertTrue(true);
     }
 }
-
 

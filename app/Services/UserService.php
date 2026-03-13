@@ -2,6 +2,8 @@
 
 namespace App\Services;
 
+use App\Http\Resources\UserResource;
+use App\Models\Role;
 use App\Models\User;
 use App\Repositories\UserRepository;
 use Illuminate\Http\UploadedFile;
@@ -22,8 +24,9 @@ class UserService
         }
     }
 
-    public function createUser(array $data, ?UploadedFile $avatar, bool $avatarRemove): User
+    public function createUser(array $data, ?UploadedFile $avatar): User
     {
+        $avatarRemove = $this->extractAvatarRemove($data);
         $data['password'] = Hash::make($data['password']);
 
         $user = $this->userRepository->create($data);
@@ -38,7 +41,6 @@ class UserService
         User $target,
         array $data,
         ?UploadedFile $avatar,
-        bool $avatarRemove,
         bool $isAdminContext,
     ): User {
         if (!$isAdminContext) {
@@ -52,6 +54,8 @@ class UserService
                 unset($data['password']);
             }
         }
+
+        $avatarRemove = $this->extractAvatarRemove($data);
 
         $this->userRepository->update($target, $data);
         $this->applyAvatar($target, $avatar, $avatarRemove);
@@ -81,6 +85,53 @@ class UserService
         ];
     }
 
+    public function getAdminIndexData(array $validated): array
+    {
+        $search = trim((string) ($validated['search'] ?? ''));
+
+        return [
+            'users' => $this->userRepository->searchPaginated($search, 15),
+            'search' => $search,
+        ];
+    }
+
+    public function getAdminUserFormData(?User $user = null): array
+    {
+        $data = [
+            'roles' => Role::query()->orderBy('name')->get(),
+        ];
+
+        if ($user) {
+            $data['user'] = $user;
+        }
+
+        return $data;
+    }
+
+    public function getProfileEditData(User $actor, User $target): array
+    {
+        $this->assertCurrentUser($actor, $target);
+
+        return [
+            'user' => $target,
+        ];
+    }
+
+    public function getProfileUpdatePayload(User $user): array
+    {
+        return [
+            'message' => 'Profile updated successfully.',
+            'data' => new UserResource($user),
+        ];
+    }
+
+    public function appendProfileDeleteRedirect(array $payload): array
+    {
+        $payload['redirect'] = route('login');
+
+        return $payload;
+    }
+
     private function applyAvatar(User $user, ?UploadedFile $avatar, bool $avatarRemove): void
     {
         if ($avatarRemove) {
@@ -97,5 +148,12 @@ class UserService
             $this->userRepository->save($user);
         }
     }
-}
 
+    private function extractAvatarRemove(array &$data): bool
+    {
+        $avatarRemove = filter_var($data['avatar_remove'] ?? false, FILTER_VALIDATE_BOOLEAN);
+        unset($data['avatar_remove']);
+
+        return $avatarRemove;
+    }
+}

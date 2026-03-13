@@ -3,7 +3,6 @@
 namespace App\Http\Requests\Users;
 
 use App\Http\Requests\BaseRequest;
-use Illuminate\Validation\Rule;
 
 class UpdateProfileRequest extends BaseRequest
 {
@@ -20,19 +19,11 @@ class UpdateProfileRequest extends BaseRequest
     {
         $routeUser = $this->routeUser();
 
-        return [
-            'name' => ['required', 'string', 'max:255'],
-            'email' => [
-                'required',
-                'string',
-                'email',
-                'max:255',
-                Rule::unique('users', 'email')->ignore($routeUser?->id),
-            ],
+        return array_merge($this->baseUserRules($routeUser), [
             'phone' => ['nullable', 'string', 'max:32', 'regex:/^\+?[0-9\-\s\(\)]+$/'],
-            'avatar' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:25600'],
-            'avatar_remove' => ['nullable', 'boolean'],
-        ];
+            'avatar' => $this->avatarRules(),
+            'avatar_remove' => $this->avatarRemoveRules(),
+        ]);
     }
 
     public function messages(): array
@@ -41,5 +32,4 @@ class UpdateProfileRequest extends BaseRequest
             'phone.regex' => 'Phone may contain digits, spaces, and +()- symbols only.',
         ];
     }
-
 }
