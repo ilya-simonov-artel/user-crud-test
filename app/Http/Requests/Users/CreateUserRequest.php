@@ -2,11 +2,10 @@
 
 namespace App\Http\Requests\Users;
 
-use Illuminate\Foundation\Http\FormRequest;
+use App\Http\Requests\BaseRequest;
 use Illuminate\Support\Facades\Gate;
-use Illuminate\Validation\Rule;
 
-class CreateUserRequest extends FormRequest
+class CreateUserRequest extends BaseRequest
 {
     public function authorize(): bool
     {
@@ -15,16 +14,12 @@ class CreateUserRequest extends FormRequest
 
     public function rules(): array
     {
-        return [
-            'name' => ['required', 'string', 'max:255'],
-            'email' => ['required', 'string', 'email', 'max:255', 'unique:users,email'],
+        return array_merge($this->baseUserRules(), [
             'phone' => ['nullable', 'string', 'max:32'],
             'role_id' => ['required', 'integer', 'exists:roles,id'],
             'password' => ['required', 'string', 'min:6', 'max:255'],
-            'avatar' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:25600'],
-            'avatar_remove' => ['nullable', 'boolean'],
-        ];
+            'avatar' => $this->avatarRules(),
+            'avatar_remove' => $this->avatarRemoveRules(),
+        ]);
     }
 }
-
-

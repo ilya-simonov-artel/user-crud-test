@@ -5,7 +5,6 @@ namespace App\Http\Controllers;
 use App\Http\Requests\Users\DeleteProfileRequest;
 use App\Http\Requests\Users\GetProfileRequest;
 use App\Http\Requests\Users\UpdateProfileRequest;
-use App\Http\Resources\UserResource;
 use App\Models\User;
 use App\Services\UserService;
 use Illuminate\Http\Request;
@@ -24,7 +23,6 @@ class ProfileController extends Controller
 
     public function show(GetProfileRequest $request, User $user)
     {
-
         return view('profile.show', [
             'user' => $user,
         ]);
@@ -32,33 +30,22 @@ class ProfileController extends Controller
 
     public function edit(User $user)
     {
-        $this->userService->assertCurrentUser(auth()->user(), $user);
-
-        return view('profile.edit', [
-            'user' => $user,
-        ]);
+        return view('profile.edit', $this->userService->getProfileEditData(auth()->user(), $user));
     }
 
     public function update(UpdateProfileRequest $request, User $user)
     {
-        $this->userService->assertCurrentUser(auth()->user(), $user);
-
         $data = $request->validated();
-        $avatarRemove = (bool) ($data['avatar_remove'] ?? false);
 
         $user = $this->userService->updateUser(
             $request->user(),
             $user,
             $data,
             $request->file('avatar'),
-            $avatarRemove,
             false,
         );
 
-        $payload = [
-            'message' => 'Profile updated successfully.',
-            'data' => new UserResource($user),
-        ];
+        $payload = $this->userService->getProfileUpdatePayload($user);
 
         if ($request->expectsJson()) {
             return response()->json($payload);
@@ -77,7 +64,7 @@ class ProfileController extends Controller
         $request->session()->invalidate();
         $request->session()->regenerateToken();
 
-        $payload['redirect'] = route('login');
+        $payload = $this->userService->appendProfileDeleteRedirect($payload);
 
         if ($request->expectsJson()) {
             return response()->json($payload);
@@ -86,4 +73,3 @@ class ProfileController extends Controller
         return redirect()->route('login')->with('status', $payload['message']);
     }
 }
-
